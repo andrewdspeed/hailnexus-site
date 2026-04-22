@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Hail Map | Hail Nexus — Members Only</title>
+  <meta name="description" content="Live NOAA hail map for Hail Nexus members. Track storm reports, heat swaths, and historical hail events across Louisiana, Arkansas, and Texas." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href="https://www.hailnexus.com/map" />
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="icon" href="/assets/images/logo.png" type="image/png" />
+
+  <style>
+    /* ── Map page layout ── */
+    body { background: var(--navy); color: var(--white); }
+
+    #map-page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    #map-page main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding-top: 72px; /* navbar offset */
+    }
+
+    .map-header {
+      background: linear-gradient(135deg, var(--navy) 0%, #0d1f2f 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 1.25rem 1.5rem;
+    }
+    .map-header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .map-header h1 {
+      font-size: 1.4rem;
+      color: var(--white);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .map-header h1 .live-dot {
+      width: 10px; height: 10px;
+      background: #22c55e;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+      animation: live-pulse 2s infinite;
+    }
+    @keyframes live-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
+      70%  { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+    .map-header .user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.85);
+      padding: 0.4rem 0.9rem;
+      border-radius: 50px;
+      font-size: 0.85rem;
+    }
+    .map-header .user-chip .avatar {
+      width: 22px; height: 22px;
+      background: var(--blue);
+      color: var(--white);
+      font-size: 0.7rem;
+      font-weight: 700;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .map-header .sign-out {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.8rem;
+      text-decoration: underline;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    .map-header .sign-out:hover { color: var(--white); }
+
+    /* ── Iframe container (authenticated) ── */
+    #map-frame-wrap {
+      flex: 1;
+      position: relative;
+      background: #0a1825;
+      display: none;
+      min-height: 70vh;
+    }
+    #map-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    /* ── Sign-in gate (unauthenticated) ── */
+    #auth-gate {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 1.5rem;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(26,109,181,0.25), transparent 55%),
+        radial-gradient(circle at 80% 80%, rgba(33,150,243,0.15), transparent 55%),
+        linear-gradient(135deg, var(--navy), #0a1825);
+    }
+    .auth-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-lg);
+      padding: 2.75rem 2.5rem;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-lg);
+    }
+    .auth-card .lock-icon {
+      width: 64px; height: 64px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(135deg, var(--blue), var(--blue-light));
+      color: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      box-shadow: 0 8px 24px rgba(26,109,181,0.4);
+    }
+    .auth-card h2 {
+      color: var(--white);
+      margin-bottom: 0.5rem;
+      font-size: 1.6rem;
+    }
+    .auth-card p {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.95rem;
+      margin-bottom: 1.75rem;
+    }
+    .auth-card .btn {
+      width: 100%;
+      justify-content: center;
+      padding: 0.9rem 1.25rem;
+      font-size: 0.95rem;
+    }
+    .auth-card .btn-primary {
+      background: var(--white);
+      color: var(--navy);
+      border-color: var(--white);
+      gap: 0.75rem;
+    }
+    .auth-card .btn-primary:hover {
+      background: var(--off-white);
+      border-color: var(--off-white);
+      color: var(--navy);
+      box-shadow: 0 6px 20px rgba(255,255,255,0.15);
+    }
+    .google-logo {
+      width: 18px; height: 18px;
+      flex-shrink: 0;
+    }
+    .auth-card .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin: 1.5rem 0;
+    }
+    .auth-card .small {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.8rem;
+      margin: 0;
+    }
+    .auth-card .poll-status {
+      display: none;
+      margin-top: 1rem;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+    }
+    .auth-card .poll-status.visible { display: block; }
+    .auth-card .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: var(--blue-glow);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.4rem;
+    }
+
+    /* ── Initial loading state ── */
+    #auth-loading {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 1.5rem;
+      color: rgba(255,255,255,0.6);
+      background: var(--navy);
+    }
+    #auth-loading .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: var(--blue-glow);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.75rem;
+    }
+    #auth-loading span { display: inline-flex; align-items: center; font-size: 0.95rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error banner ── */
+    #auth-error {
+      display: none;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fecaca;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-top: 1.25rem;
+      font-size: 0.85rem;
+    }
+    #auth-error.visible { display: block; }
+
+    @media (max-width: 640px) {
+      .map-header h1 { font-size: 1.1rem; }
+      .map-header .user-chip { font-size: 0.78rem; padding: 0.3rem 0.7rem; }
+      .auth-card { padding: 2rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map-page">
+
+    <!-- ═══════════════════════════════ NAV ═══════════════════════════════ -->
+    <nav id="navbar">
+      <div class="nav-inner">
+        <a href="/" class="nav-logo">
+          <img src="/assets/images/logo.png" alt="Hail Nexus Logo" />
+        </a>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="/#hero">Home</a></li>
+          <li><a href="/#services">Services</a></li>
+          <li><a href="/#areas">Service Areas</a></li>
+          <li><a href="/map" class="active">Live Map</a></li>
+          <li><a href="/#contact">Contact</a></li>
+        </ul>
+        <a href="/#contact" class="btn btn-primary nav-cta">Free Estimate</a>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </nav>
+
+    <main>
+      <!-- Page header — shown once auth state is known -->
+      <header class="map-header" id="mapHeader" style="display:none;">
+        <div class="map-header-inner">
+          <h1>
+            <span class="live-dot" aria-hidden="true"></span>
+            Live Hail Map
+          </h1>
+          <div id="userArea" style="display:flex;align-items:center;gap:0.75rem;">
+            <span class="user-chip" id="userChip">
+              <span class="avatar" id="userAvatar">?</span>
+              <span id="userName">Member</span>
+            </span>
+            <button class="sign-out" id="signOutBtn" type="button">Sign out</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Initial state — checking session -->
+      <div id="auth-loading">
+        <span><span class="spinner"></span> Checking your Hail Nexus sign-in…</span>
+      </div>
+
+      <!-- Authenticated — iframe-embedded CRM map -->
+      <div id="map-frame-wrap">
+        <iframe
+          id="map-frame"
+          title="Hail Nexus — Live Hail Map"
+          allow="geolocation; fullscreen"
+          referrerpolicy="origin"
+          loading="eager">
+        </iframe>
+      </div>
+
+      <!-- Unauthenticated — sign-in CTA -->
+      <div id="auth-gate" style="display:none;">
+        <div class="auth-card">
+          <div class="lock-icon" aria-hidden="true">🔒</div>
+          <h2>Members-Only Map</h2>
+          <p>
+            The Live Hail Map is part of the Hail Nexus operator platform.
+            Sign in with your Hail Nexus account to view live NOAA storm reports,
+            historical swaths, and damage corridors.
+          </p>
+
+          <button type="button" class="btn btn-primary" id="signInBtn">
+            <svg class="google-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
+              <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+              <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.4-4.5 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/>
+              <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.3-4.1 5.6l6.2 5.2C41.1 35.7 44 30.3 44 24c0-1.3-.1-2.4-.4-3.5z"/>
+            </svg>
+            Sign in with Google
+          </button>
+
+          <div class="divider"></div>
+          <p class="small">
+            Not a member yet? <a href="/#contact" style="color:var(--blue-glow);">Contact us</a>
+            to get operator access.
+          </p>
+
+          <div class="poll-status" id="pollStatus">
+            <span class="spinner"></span>Waiting for sign-in to complete…
+          </div>
+          <div id="auth-error">Couldn't reach the CRM. Please try again in a moment.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // =====================================================================
+    // Authenticated Map Page — linked to the Hail Nexus CRM session
+    // =====================================================================
+    // Strategy:
+    //   1) Cross-origin credentialed GET to the CRM's tRPC `auth.me` endpoint.
+    //      The session cookie (set with domain=.hailnexus.com) rides along.
+    //   2) If a user is returned: mount an iframe pointing at the CRM's
+    //      /hail-map route. The iframe inherits the same cookie, so the CRM
+    //      authenticates the request server-side. The CRM has allowed this
+    //      origin via CSP frame-ancestors.
+    //   3) If no user: show a sign-in card. Clicking "Sign in" opens the CRM's
+    //      Google OAuth flow in a popup, and we poll auth.me every 2s so the
+    //      iframe swaps in automatically the moment the user finishes signing in.
+    //
+    // CRM URL can be overridden via <meta name="hailnexus-crm-url" content="...">
+    // or by appending ?crm=https://example.com to the URL (useful for staging).
+
+    const DEFAULT_CRM_URL = "https://app.hailnexus.com";
+
+    function resolveCrmUrl() {
+      const qs = new URLSearchParams(window.location.search);
+      const qsOverride = qs.get("crm");
+      if (qsOverride) return qsOverride.replace(/\/$/, "");
+      const meta = document.querySelector('meta[name="hailnexus-crm-url"]');
+      if (meta && meta.content) return meta.content.replace(/\/$/, "");
+      return DEFAULT_CRM_URL;
+    }
+
+    const CRM_URL = resolveCrmUrl();
+    const MAP_PATH = "/hail-map";
+
+    const els = {
+      loading:   document.getElementById("auth-loading"),
+      gate:      document.getElementById("auth-gate"),
+      frameWrap: document.getElementById("map-frame-wrap"),
+      frame:     document.getElementById("map-frame"),
+      header:    document.getElementById("mapHeader"),
+      userName:  document.getElementById("userName"),
+      userAvatar:document.getElementById("userAvatar"),
+      signOut:   document.getElementById("signOutBtn"),
+      signIn:    document.getElementById("signInBtn"),
+      pollStat:  document.getElementById("pollStatus"),
+      errorBox:  document.getElementById("auth-error"),
+    };
+
+    // tRPC v11 GET query shape: /api/trpc/<router>.<proc>?input=<json>
+    // `auth.me` takes no input, but providing input={} avoids edge-case
+    // "Unable to parse JSON" errors on some deployments.
+    async function fetchCurrentUser() {
+      const url = `${CRM_URL}/api/trpc/auth.me?input=${encodeURIComponent('{"json":null,"meta":{"values":["undefined"]}}')}`;
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Accept": "application/json",
+          "x-trpc-source": "hailnexus-site",
+        },
+      });
+      if (!res.ok) throw new Error("auth check failed: " + res.status);
+      const body = await res.json();
+      // superjson-wrapped tRPC response: { result: { data: { json: <user|null> } } }
+      const user = body && body.result && body.result.data
+        ? body.result.data.json
+        : null;
+      return user && typeof user === "object" ? user : null;
+    }
+
+    function showAuthenticated(user) {
+      els.loading.style.display   = "none";
+      els.gate.style.display      = "none";
+      els.frameWrap.style.display = "flex";
+      els.header.style.display    = "block";
+      els.errorBox.classList.remove("visible");
+
+      const displayName = user.name || user.email || "Member";
+      els.userName.textContent = displayName;
+      els.userAvatar.textContent = displayName.trim().charAt(0).toUpperCase() || "?";
+
+      // Only set src once (avoid reload loops on repeat auth checks).
+      if (!els.frame.src || !els.frame.src.includes(MAP_PATH)) {
+        els.frame.src = `${CRM_URL}${MAP_PATH}`;
+      }
+    }
+
+    function showSignInGate(errored) {
+      els.loading.style.display   = "none";
+      els.frameWrap.style.display = "none";
+      els.header.style.display    = "none";
+      els.gate.style.display      = "flex";
+      if (errored) els.errorBox.classList.add("visible");
+      else els.errorBox.classList.remove("visible");
+    }
+
+    let pollTimer = null;
+    function startAuthPoll() {
+      if (pollTimer) return;
+      els.pollStat.classList.add("visible");
+      pollTimer = setInterval(async () => {
+        try {
+          const user = await fetchCurrentUser();
+          if (user) {
+            stopAuthPoll();
+            showAuthenticated(user);
+          }
+        } catch (_) {
+          // Swallow transient errors during polling.
+        }
+      }, 2000);
+    }
+    function stopAuthPoll() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+      els.pollStat.classList.remove("visible");
+    }
+
+    els.signIn.addEventListener("click", () => {
+      const popup = window.open(
+        `${CRM_URL}/api/auth/google`,
+        "hailnexus-signin",
+        "width=520,height=640,noopener=no"
+      );
+      // Fallback when popups are blocked: navigate current tab.
+      if (!popup) {
+        window.location.href = `${CRM_URL}/api/auth/google`;
+        return;
+      }
+      startAuthPoll();
+    });
+
+    els.signOut.addEventListener("click", async () => {
+      try {
+        await fetch(`${CRM_URL}/api/auth/logout`, {
+          method: "GET",
+          credentials: "include",
+          redirect: "manual",
+        });
+      } catch (_) { /* best-effort */ }
+      els.frame.src = "about:blank";
+      showSignInGate(false);
+    });
+
+    // Refresh auth state when the user returns to this tab (e.g. after signing in).
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && pollTimer) {
+        // Trigger an immediate check instead of waiting for the next tick.
+        fetchCurrentUser().then((u) => {
+          if (u) { stopAuthPoll(); showAuthenticated(u); }
+        }).catch(() => {});
+      }
+    });
+
+    // Initial check
+    (async () => {
+      try {
+        const user = await fetchCurrentUser();
+        if (user) showAuthenticated(user);
+        else showSignInGate(false);
+      } catch (_) {
+        showSignInGate(true);
+      }
+    })();
+
+    // Mobile nav toggle (mirrors the main site's script)
+    const navToggle = document.getElementById("navToggle");
+    const navLinks  = document.getElementById("navLinks");
+    if (navToggle && navLinks) {
+      navToggle.addEventListener("click", () => navLinks.classList.toggle("open"));
+    }
+  </script>
+</body>
+</html>
