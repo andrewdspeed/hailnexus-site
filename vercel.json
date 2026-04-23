@@ -22,6 +22,7 @@
     }
   ],
   "rewrites": [
-    { "source": "/estimate", "destination": "/index.html" }
+    { "source": "/estimate", "destination": "/index.html" },
+    { "source": "/map",      "destination": "/map.html" }
   ]
 }
