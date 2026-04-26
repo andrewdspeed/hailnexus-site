@@ -1,9 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "builds": [
-    { "src": "*.html",             "use": "@vercel/static" },
-    { "src": "assets/**",          "use": "@vercel/static" }
-  ],
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
@@ -22,7 +19,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/estimate", "destination": "/index.html" },
-    { "source": "/map",      "destination": "/map.html" }
+    { "source": "/estimate", "destination": "/index.html" }
   ]
 }
